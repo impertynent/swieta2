@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zostaniesz moim prezentem?</title>
+  <!-- Load Tailwind CSS for layout and responsive styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Load crisp monospace font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* Custom terminal aesthetics and glowing text effects */
+    body {
+      background-color: #090b10;
+      font-family: 'Fira Code', 'Courier New', monospace;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    /* Retro CRT scanline subtle overlay */
+    .crt-overlay {
+      background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%,
+        rgba(0, 0, 0, 0.28) 50%
+      );
+      background-size: 100% 4px;
+      pointer-events: none;
+    }
+
+    /* ASCII Art Container Styling */
+    #ascii-stage {
+      font-family: 'Fira Code', 'Courier New', monospace;
+      line-height: 1.15;
+      letter-spacing: 0.05em;
+      white-space: pre;
+      /* Responsive font size so 68 columns never wrap on mobile or desktop */
+      font-size: clamp(7.2px, 1.9vw, 17px);
+      text-shadow: 0 0 2px rgba(255, 255, 255, 0.08);
+    }
+
+    /* Color classes matching the terminal palette */
+    .c-wall-main {
+      color: #c25934; /* Warm terracotta brick */
+    }
+    .c-wall-mortar {
+      color: #7c351d; /* Darker brick mortar */
+    }
+    .c-frame {
+      color: #f3d5b5; /* Warm cream wood window frame */
+    }
+    .c-sill {
+      color: #d4a373; /* Light tan wooden sill */
+    }
+    .c-snow {
+      color: #a5f3fc; /* Icy cyan-white snowflakes */
+      text-shadow: 0 0 5px rgba(165, 243, 252, 0.55);
+    }
+    .c-cat {
+      color: #cbd5e1; /* Soft silver-gray cat */
+      text-shadow: 0 0 3px rgba(203, 213, 225, 0.25);
+    }
+    .c-cat-eye {
+      color: #fde047; /* Warm golden cat eyes */
+      text-shadow: 0 0 6px rgba(253, 224, 71, 0.65);
+    }
+    .c-msg-red {
+      color: #ff2a4b;
+      font-weight: 700;
+      text-shadow:
+        0 0 6px rgba(255, 42, 75, 0.85),
+        0 0 14px rgba(255, 42, 75, 0.55);
+    }
+    .c-heart-bright {
+      color: #ff1e42;
+      font-weight: 700;
+      text-shadow:
+        0 0 8px rgba(255, 30, 66, 0.95),
+        0 0 18px rgba(255, 42, 75, 0.7);
+    }
+    .c-heart-shade {
+      color: #be123c;
+      font-weight: 600;
+      text-shadow: 0 0 6px rgba(190, 18, 60, 0.6);
+    }
+    .c-sparkle {
+      color: #fda4af;
+      text-shadow: 0 0 6px rgba(253, 164, 175, 0.8);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-2 sm:p-6 text-slate-200">
+
+  <!-- Main Terminal Frame -->
+  <main class="relative w-full max-w-4xl bg-[#0d1117] border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+    
+    <!-- Retro Terminal Window Header -->
+    <header class="flex items-center justify-between px-4 py-2.5 bg-[#161b22] border-b border-slate-800">
+      <div class="flex items-center space-x-2">
+        <span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span>
+        <span class="w-3 h-3 rounded-full bg-amber-400 inline-block"></span>
+        <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+        <span class="ml-2 text-xs text-slate-400 tracking-wider">winter_window.ascii — 68x24</span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button
+          id="toggle-snow-btn"
+          type="button"
+          class="px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition cursor-pointer"
+        >
+          ❄ Śnieżyca: Normalna
+        </button>
+        <button
+          id="pause-btn"
+          type="button"
+          class="px-3 py-1 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer"
+        >
+          ⏸ Pauza
+        </button>
+      </div>
+    </header>
+
+    <!-- ASCII Canvas Viewport -->
+    <div class="relative flex items-center justify-center py-4 px-2 sm:py-6 sm:px-4 bg-[#080a0f]">
+      <div id="ascii-stage" aria-label="Animowana grafika ASCII z kotem na oknie i padającym śniegiem"></div>
+      <!-- Subtle CRT scanlines -->
+      <div class="crt-overlay absolute inset-0 rounded-b-2xl"></div>
+    </div>
+
+    <!-- Interactive Decision Buttons Under the Window -->
+    <div id="choice-bar" class="relative z-10 flex flex-wrap items-center justify-center gap-4 px-4 py-4 bg-[#111620] border-t border-slate-800/80">
+      <button
+        id="btn-tak"
+        type="button"
+        class="px-6 py-2.5 text-sm sm:text-base font-bold rounded-xl bg-rose-600 hover:bg-rose-500 active:scale-95 text-white shadow-lg shadow-rose-600/30 border border-rose-400/40 transition-all duration-200 cursor-pointer"
+      >
+        Tak ♥
+      </button>
+      <button
+        id="btn-nie"
+        type="button"
+        class="px-5 py-2.5 text-sm sm:text-base font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 border border-slate-700 transition-all duration-200 cursor-pointer"
+      >
+        Nie
+      </button>
+      <button
+        id="btn-reset"
+        type="button"
+        class="hidden px-4 py-2 text-xs sm:text-sm font-medium rounded-xl bg-slate-800 hover:bg-slate-700 text-rose-300 border border-slate-700 transition cursor-pointer"
+      >
+        ↺ Zapytaj jeszcze raz
+      </button>
+    </div>
+
+  </main>
+
+  <!-- Subtle Interactive Controls Hint -->
+  <p class="mt-4 text-xs text-slate-500 text-center">
+    Kliknij w okno, aby dodać podmuch wiatru • <span class="text-rose-400">♥</span>
+  </p>
+
+  <script>
+    /**
+     * Animated ASCII Winter Window Scene
+     * Renders a 68x24 grid of colored ASCII characters using HTML spans.
+     */
+    (function () {
+      const WIDTH = 68;
+      const HEIGHT = 24;
+
+      // Window geometry constants
+      const WIN_TOP = 2;
+      const WIN_BOTTOM = HEIGHT - 5; // 19
+      const WIN_LEFT = 4;
+      const WIN_RIGHT = WIDTH - 5;  // 63
+      const SILL_Y = WIN_BOTTOM + 1; // 20
+
+      // Message text centered in the middle of the window
+      const DEFAULT_MAIN = "Zostaniesz moim prezentem?";
+      const DEFAULT_SUB = "twój imper <3";
+
+      const PLEADING_PROMPTS = [
+        "Na pewno? Spróbuj jeszcze raz!",
+        "Kotkowi będzie smutno... Zostaniesz moim prezentem?",
+        "Proszę? Pomyśl jeszcze raz! <3",
+        "Nie przyjmuję odmowy! Zostaniesz moim prezentem?",
+        "Serduszko czeka... Kliknij Tak! <3"
+      ];
+
+      let currentMainMsg = DEFAULT_MAIN;
+      let currentSubMsg = DEFAULT_SUB;
+      let noClickCount = 0;
+      let acceptedMode = false;
+
+      // Snowflake characters
+      const SNOW_CHARS = ["*", ".", "+", "*"];
+
+      // Cat sprite (head and body sitting on the sill)
+      const CAT_BODY = [
+        "  /\\_/\\  ",
+        " ( o.o ) ",
+        "  > ^ <  ",
+        " /     \\ ",
+        "|       |",
+        "|_______|"
+      ];
+
+      // Smooth 6-frame swinging tail cycle
+      const TAIL_FRAMES = [
+        ["   /\\ ", "  /  )", " (  / ", "  \\(  "],
+        ["    /\\", "   /  )", "  (  /", "   \\( "],
+        ["     /\\", "    /  )", "   (  /", "    \\("],
+        ["      /\\", "     /  )", "    (  /", "     \\("],
+        ["     /\\", "    /  )", "   (  /", "    \\("],
+        ["    /\\", "   /  )", "  (  /", "   \\( "]
+      ];
+
+      // State variables
+      let isPaused = false;
+      let blizzardMode = false;
+      let windGust = 0;
+      let step = 0;
+      let flakes = [];
+
+      const stageEl = document.getElementById("ascii-stage");
+      const pauseBtn = document.getElementById("pause-btn");
+      const snowBtn = document.getElementById("toggle-snow-btn");
+      const btnTak = document.getElementById("btn-tak");
+      const btnNie = document.getElementById("btn-nie");
+      const btnReset = document.getElementById("btn-reset");
+
+      /**
+       * Escape HTML special characters so '<3', '&', etc. render safely.
+       */
+      function escapeHtml(ch) {
+        if (ch === "<") return "&lt;";
+        if (ch === ">") return "&gt;";
+        if (ch === "&") return "&amp;";
+        return ch;
+      }
+
+      /**
+       * Generate an inclusive random integer between min and max.
+       */
+      function randomInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      }
+
+      /**
+       * Initialize falling snowflake particles inside the window bounds.
+       */
+      function initFlakes(count) {
+        flakes = [];
+        for (let i = 0; i < count; i++) {
+          flakes.push({
+            x: randomInt(WIN_LEFT + 1, WIN_RIGHT - 1),
+            y: randomInt(WIN_TOP + 1, WIN_BOTTOM - 1),
+            ch: SNOW_CHARS[Math.floor(Math.random() * SNOW_CHARS.length)],
+            speed: 0.35 + Math.random() * 0.45,
+            phase: Math.random() * Math.PI * 2
+          });
+        }
+      }
+
+      /**
+       * Build the base 68x24 grid with the brick wall, window frame, crossbars, and sill.
+       */
+      function createBaseGrid() {
+        const grid = [];
+        for (let y = 0; y < HEIGHT; y++) {
+          const row = [];
+          for (let x = 0; x < WIDTH; x++) {
+            const isMortar = y % 2 === 1 || (x + Math.floor(y / 2) * 3) % 6 === 0;
+            row.push({
+              ch: isMortar ? "+" : "#",
+              cls: isMortar ? "c-wall-mortar" : "c-wall-main"
+            });
+          }
+          grid.push(row);
+        }
+
+        // Carve out window interior and draw wooden frame
+        for (let y = WIN_TOP; y <= WIN_BOTTOM; y++) {
+          for (let x = WIN_LEFT; x <= WIN_RIGHT; x++) {
+            if (y === WIN_TOP || y === WIN_BOTTOM) {
+              grid[y][x] = { ch: "=", cls: "c-frame" };
+            } else if (x === WIN_LEFT || x === WIN_RIGHT) {
+              grid[y][x] = { ch: "|", cls: "c-frame" };
+            } else {
+              grid[y][x] = { ch: " ", cls: null };
+            }
+          }
+        }
+
+        // Draw window crossbars
+        const midX = Math.floor((WIN_LEFT + WIN_RIGHT) / 2);
+        const midY = Math.floor((WIN_TOP + WIN_BOTTOM) / 2);
+        for (let x = WIN_LEFT + 1; x < WIN_RIGHT; x++) {
+          grid[midY][x] = { ch: "-", cls: "c-frame" };
+        }
+        for (let y = WIN_TOP + 1; y < WIN_BOTTOM; y++) {
+          grid[y][midX] = { ch: "|", cls: "c-frame" };
+        }
+
+        // Draw wooden sill along the bottom of the window
+        for (let x = WIN_LEFT - 2; x <= WIN_RIGHT + 2; x++) {
+          if (x >= 0 && x < WIDTH) {
+            grid[SILL_Y][x] = { ch: "=", cls: "c-sill" };
+          }
+        }
+
+        return grid;
+      }
+
+      /**
+       * Draw centered text with a small clear margin so it stays readable over snowflakes.
+       */
+      function drawCenteredText(grid, y, text, cls) {
+        if (y < 0 || y >= HEIGHT) return;
+        const startX = Math.floor((WIDTH - text.length) / 2);
+        const pad = 2;
+
+        for (let x = Math.max(WIN_LEFT + 1, startX - pad); x < Math.min(WIN_RIGHT, startX + text.length + pad); x++) {
+          grid[y][x] = { ch: " ", cls: null };
+        }
+
+        for (let i = 0; i < text.length; i++) {
+          const x = startX + i;
+          if (x >= 0 && x < WIDTH) {
+            grid[y][x] = { ch: text[i], cls: cls };
+          }
+        }
+      }
+
+      /**
+       * Draw the cat sitting on the right side of the window sill with an animated tail.
+       */
+      function drawCat(grid, tailFrameIdx) {
+        const catBaseY = SILL_Y - CAT_BODY.length;
+        const catX = WIDTH - 19;
+
+        for (let dy = 0; dy < CAT_BODY.length; dy++) {
+          const y = catBaseY + dy;
+          const row = CAT_BODY[dy];
+          for (let dx = 0; dx < row.length; dx++) {
+            const ch = row[dx];
+            const x = catX + dx;
+            if (ch !== " " && x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
+              const isEye = dy === 1 && ch === "o";
+              grid[y][x] = { ch: ch, cls: isEye ? "c-cat-eye" : "c-cat" };
+            }
+          }
+        }
+
+        const tail = TAIL_FRAMES[tailFrameIdx % TAIL_FRAMES.length];
+        const tailX = catX + CAT_BODY[0].length - 1;
+        const tailY = SILL_Y - tail.length;
+
+        for (let dy = 0; dy < tail.length; dy++) {
+          const y = tailY + dy;
+          const row = tail[dy];
+          for (let dx = 0; dx < row.length; dx++) {
+            const ch = row[dx];
+            const x = tailX + dx;
+            if (ch !== " " && x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
+              grid[y][x] = { ch: ch, cls: "c-cat" };
+            }
+          }
+        }
+      }
+
+      /**
+       * Draw a 3D-style spinning ASCII heart inside the window when "Tak" is pressed.
+       */
+      function drawSpinningHeart(grid, t) {
+        const cx = Math.floor((WIN_LEFT + WIN_RIGHT) / 2) - 4;
+        const cy = Math.floor((WIN_TOP + WIN_BOTTOM) / 2) - 1;
+
+        // Smooth horizontal rotation factor via cosine + subtle vertical pulse
+        const cosAngle = Math.cos(t * 0.22);
+        const absCos = Math.abs(cosAngle);
+        const pulse = 1 + 0.06 * Math.sin(t * 0.44);
+
+        const rx = Math.max(2.2, 11.5 * absCos * pulse);
+        const ry = 6.2 * pulse;
+
+        for (let y = WIN_TOP + 1; y < WIN_BOTTOM; y++) {
+          for (let x = WIN_LEFT + 1; x < WIN_RIGHT; x++) {
+            // Normalize coordinates into implicit heart equation space
+            const nx = (x - cx) / rx;
+            const ny = -(y - cy) / ry + 0.18;
+
+            // Classic implicit heart curve: (x^2 + y^2 - 1)^3 - x^2 * y^3 <= 0
+            const a = nx * nx + ny * ny - 1;
+            const val = a * a * a - nx * nx * ny * ny * ny;
+
+            if (val <= 0) {
+              // Edge vs interior shading based on depth and rotation angle
+              const isEdge = val > -0.18 || absCos < 0.28;
+              let ch = "@";
+              if (absCos < 0.22) {
+                ch = "|";
+              } else if (isEdge) {
+                ch = cosAngle >= 0 ? "#" : "%";
+              } else {
+                ch = (x + y) % 2 === 0 ? "♥" : "*";
+              }
+
+              grid[y][x] = {
+                ch: ch,
+                cls: isEdge ? "c-heart-shade" : "c-heart-bright"
+              };
+            }
+          }
+        }
+      }
+
+      /**
+       * Update physics for falling snowflakes and render a complete frame.
+       */
+      function renderFrame() {
+        const grid = createBaseGrid();
+
+        // Decay wind gust gradually
+        if (Math.abs(windGust) > 0.01) {
+          windGust *= 0.92;
+        } else {
+          windGust = 0;
+        }
+
+        // Update and draw snowflakes / celebratory sparkles
+        const speedMultiplier = blizzardMode ? 1.75 : 1.0;
+        for (const flake of flakes) {
+          const ix = Math.round(flake.x);
+          const iy = Math.floor(flake.y);
+
+          if (iy > WIN_TOP && iy < WIN_BOTTOM && ix > WIN_LEFT && ix < WIN_RIGHT) {
+            const isHeartSparkle = acceptedMode && flake.ch === "♥";
+            grid[iy][ix] = {
+              ch: flake.ch,
+              cls: isHeartSparkle ? "c-sparkle" : "c-snow"
+            };
+          }
+
+          // Advance snowflake position
+          flake.y += flake.speed * speedMultiplier;
+          flake.x += Math.sin(step * 0.12 + flake.phase) * 0.25 + windGust;
+
+          // Wrap horizontally inside window
+          if (flake.x <= WIN_LEFT + 1) flake.x = WIN_RIGHT - 1.5;
+          if (flake.x >= WIN_RIGHT - 1) flake.x = WIN_LEFT + 1.5;
+
+          // Respawn at top of window when reaching sill
+          if (Math.floor(flake.y) >= WIN_BOTTOM) {
+            flake.y = WIN_TOP + 1;
+            flake.x = randomInt(WIN_LEFT + 1, WIN_RIGHT - 1);
+            const activePool = acceptedMode ? ["*", "+", "♥", "."] : SNOW_CHARS;
+            flake.ch = activePool[Math.floor(Math.random() * activePool.length)];
+          }
+        }
+
+        // Draw the cat with its swinging tail (faster happy tail wag when accepted!)
+        const tailSpeedDivisor = acceptedMode ? 1 : 2;
+        drawCat(grid, Math.floor(step / tailSpeedDivisor));
+
+        if (acceptedMode) {
+          // Render 3D spinning heart and celebratory message
+          drawSpinningHeart(grid, step);
+          drawCenteredText(grid, WIN_BOTTOM - 2, "Jej! Najlepszy prezent! <3", "c-msg-red");
+          drawCenteredText(grid, WIN_BOTTOM - 1, DEFAULT_SUB, "c-msg-red");
+        } else {
+          // Draw centered glowing red question message
+          const centerY = Math.floor(HEIGHT / 2) - 1;
+          drawCenteredText(grid, centerY, currentMainMsg, "c-msg-red");
+          drawCenteredText(grid, centerY + 1, currentSubMsg, "c-msg-red");
+        }
+
+        // Convert grid into optimized HTML spans (grouping adjacent identical classes)
+        let htmlOutput = "";
+        for (let y = 0; y < HEIGHT; y++) {
+          let currentCls = null;
+          let buffer = "";
+
+          for (let x = 0; x < WIDTH; x++) {
+            const cell = grid[y][x];
+            if (cell.cls !== currentCls) {
+              if (buffer.length > 0) {
+                htmlOutput += currentCls
+                  ? `<span class="${currentCls}">${buffer}</span>`
+                  : buffer;
+                buffer = "";
+              }
+              currentCls = cell.cls;
+            }
+            buffer += escapeHtml(cell.ch);
+          }
+
+          if (buffer.length > 0) {
+            htmlOutput += currentCls
+              ? `<span class="${currentCls}">${buffer}</span>`
+              : buffer;
+          }
+
+          if (y < HEIGHT - 1) {
+            htmlOutput += "\n";
+          }
+        }
+
+        stageEl.innerHTML = htmlOutput;
+        step++;
+      }
+
+      // Initialize snow and start animation loop
+      initFlakes(32);
+      renderFrame();
+
+      setInterval(() => {
+        if (!isPaused) {
+          renderFrame();
+        }
+      }, 125);
+
+      // Interactive controls
+      pauseBtn.addEventListener("click", () => {
+        isPaused = !isPaused;
+        pauseBtn.textContent = isPaused ? "▶ Wznów" : "⏸ Pauza";
+      });
+
+      snowBtn.addEventListener("click", () => {
+        blizzardMode = !blizzardMode;
+        initFlakes(blizzardMode ? 68 : 32);
+        snowBtn.textContent = blizzardMode
+          ? "🌨 Śnieżyca: Mocna"
+          : "❄ Śnieżyca: Normalna";
+        if (isPaused) renderFrame();
+      });
+
+      // Clicking the ASCII canvas creates a gentle gust of wind
+      stageEl.addEventListener("click", () => {
+        windGust = (Math.random() > 0.5 ? 1 : -1) * 0.85;
+      });
+
+      // Handle "Nie" button clicks: cycle playful Polish prompts and make "Tak" bigger
+      btnNie.addEventListener("click", () => {
+        if (acceptedMode) return;
+        currentMainMsg = PLEADING_PROMPTS[noClickCount % PLEADING_PROMPTS.length];
+        noClickCount++;
+
+        // Grow "Tak" button gently and nudge "Nie" playfully
+        const takScale = Math.min(1.45, 1 + noClickCount * 0.08);
+        btnTak.style.transform = `scale(${takScale.toFixed(2)})`;
+
+        const offsetX = (Math.random() > 0.5 ? 1 : -1) * Math.min(28, 8 + noClickCount * 3);
+        const offsetY = (Math.random() > 0.5 ? 1 : -1) * 3;
+        btnNie.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+
+        windGust = (Math.random() > 0.5 ? 1 : -1) * 0.6;
+        renderFrame();
+      });
+
+      // Handle "Tak" button click: launch spinning ASCII heart celebration
+      btnTak.addEventListener("click", () => {
+        acceptedMode = true;
+        isPaused = false;
+        pauseBtn.textContent = "⏸ Pauza";
+
+        // Add celebratory heart sparkles to existing flakes
+        for (let i = 0; i < flakes.length; i++) {
+          if (i % 3 === 0) flakes[i].ch = "♥";
+        }
+
+        btnTak.classList.add("hidden");
+        btnNie.classList.add("hidden");
+        btnReset.classList.remove("hidden");
+        renderFrame();
+      });
+
+      // Reset back to the initial question
+      btnReset.addEventListener("click", () => {
+        acceptedMode = false;
+        noClickCount = 0;
+        currentMainMsg = DEFAULT_MAIN;
+        currentSubMsg = DEFAULT_SUB;
+
+        btnTak.style.transform = "";
+        btnNie.style.transform = "";
+        btnTak.classList.remove("hidden");
+        btnNie.classList.remove("hidden");
+        btnReset.classList.add("hidden");
+
+        initFlakes(blizzardMode ? 68 : 32);
+        renderFrame();
+      });
+    })();
+  </script>
+</body>
+</html>
